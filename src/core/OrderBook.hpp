@@ -69,6 +69,14 @@ public:
         id_map[order_id] = NULL_NODE;
     }
 
+    uint32_t get_lowest_ask() const {
+        return asks_bits.find_lowest_ask();
+    }
+
+    uint32_t get_highest_bid() const {
+        return bids_bits.find_highest_bid();
+    }
+
 private:
     std::vector<OrderNode> orders;
     std::vector<uint32_t> id_map;
