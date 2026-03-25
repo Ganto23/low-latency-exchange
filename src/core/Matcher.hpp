@@ -16,13 +16,13 @@ public:
                 if (best_ask == NULL_NODE || best_ask > payload.price) {
                     break;
                 }
-                // TODO: Execute Trade
+                payload.quantity = book.fill_against_price(best_ask, payload.quantity, false);
             } else {
                 uint32_t best_bid = book.get_highest_bid();
                 if (best_bid == NULL_NODE || best_bid < payload.price) {
                     break;
                 }
-                // TODO: Execute Trade
+                payload.quantity = book.fill_against_price(best_bid, payload.quantity, true);
             }
         }
 
