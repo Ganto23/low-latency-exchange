@@ -1,3 +1,4 @@
+#pragma once
 constexpr uint32_t NULL_NODE = UINT32_MAX;
 
 struct alignas(32) OrderNode {

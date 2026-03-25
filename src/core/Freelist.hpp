@@ -1,3 +1,4 @@
+#pragma once
 #include <cassert>
 
 template <uint32_t Capacity>
