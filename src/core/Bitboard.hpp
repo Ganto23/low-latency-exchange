@@ -22,7 +22,7 @@ public:
     }
 
     uint32_t find_lowest_ask() const {
-        if (l3[0] == 0) {
+        if (l3[0] == 0) [[unlikely]] {
             return NULL_NODE;
         } else {
             int b3 = std::countr_zero(l3[0]);
@@ -34,7 +34,7 @@ public:
     }
 
     uint32_t find_highest_bid() const {
-        if (l3[0] == 0) {
+        if (l3[0] == 0) [[unlikely]] {
             return NULL_NODE;
         } else {
             int b3 = 63 - std::countl_zero(l3[0]);
