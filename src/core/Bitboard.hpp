@@ -34,7 +34,15 @@ public:
     }
 
     uint32_t find_highest_bid() const {
-
+        if (l3[0] == 0) {
+            return NULL_NODE;
+        } else {
+            int b3 = 63 - std::countl_zero(l3[0]);
+            int b2 = 63 - std::countl_zero(l2[b3]);
+            uint64_t w1 = (b3 * 64) + b2;
+            int b1 = 63 - std::countl_zero(l1[w1]);
+            return (w1 * 64) + b1;
+        }
     }
 
 private:
