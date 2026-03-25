@@ -37,7 +37,36 @@ public:
     }
 
     void remove_order(uint64_t order_id, bool is_buy) {
-        
+        uint32_t idx_to_remove = id_map[order_id];
+        uint32_t price = orders[idx_to_remove].price;
+        PriceLevel& level = is_buy ? bids[price] : asks[price];
+        Bitboard& bits = is_buy ? bids_bits : asks_bits;
+
+        uint32_t prev_idx = orders[idx_to_remove].prev_idx;
+        uint32_t next_idx = orders[idx_to_remove].next_idx;
+        if (prev_idx == NULL_NODE && next_idx == NULL_NODE) {
+            level.head_idx = NULL_NODE;
+            level.tail_idx = NULL_NODE;
+        } else if (prev_idx == NULL_NODE) {
+            level.head_idx = next_idx;
+            orders[next_idx].prev_idx = NULL_NODE;
+        } else if (next_idx == NULL_NODE) {
+            level.tail_idx = prev_idx;
+            orders[prev_idx].next_idx = NULL_NODE;
+        } else {
+            orders[prev_idx].next_idx = next_idx;
+            orders[next_idx].prev_idx = prev_idx;
+        }
+
+        level.total_volume -= orders[idx_to_remove].quantity;
+
+        if (level.head_idx == NULL_NODE) {
+            bits.set_empty(price);
+        }
+
+        free_list.deallocate(idx_to_remove);
+
+        id_map[order_id] = NULL_NODE;
     }
 
 private:
