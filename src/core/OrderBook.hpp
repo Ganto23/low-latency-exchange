@@ -77,6 +77,35 @@ public:
         return bids_bits.find_highest_bid();
     }
 
+    uint32_t fill_against_price(uint32_t price, uint32_t incoming_qty, bool is_buy_side_of_book) {
+        PriceLevel& level = is_buy_side_of_book ? bids[price] : asks[price];
+        Bitboard& bits = is_buy_side_of_book ? bids_bits : asks_bits;
+
+        while (incoming_qty > 0 && level.head_idx != NULL_NODE) {
+            uint32_t trade_idx = level.head_idx;
+            uint32_t trade_qty = std::min(orders[trade_idx].quantity, incoming_qty);
+            incoming_qty -= trade_qty;
+            orders[trade_idx].quantity -= trade_qty;
+            level.total_volume -= trade_qty;
+
+            if (orders[trade_idx].quantity == 0) {
+                uint32_t dead_idx = level.head_idx;
+                level.head_idx = orders[dead_idx].next_idx;
+                if (level.head_idx == NULL_NODE) {
+                    level.tail_idx = NULL_NODE;
+                    bits.set_empty(price);
+                } else {
+                    orders[level.head_idx].prev_idx = NULL_NODE;
+                }
+
+                free_list.deallocate(dead_idx);
+
+                id_map[orders[dead_idx].order_id] = NULL_NODE;
+            }
+        }
+        return incoming_qty;
+    }
+
 private:
     std::vector<OrderNode> orders;
     std::vector<uint32_t> id_map;
