@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include <netinet/tcp.h>
 
 #include "ClientSession.hpp"
 #include "../concurrency/SPSCQueue.hpp"
@@ -15,7 +16,7 @@
 template <size_t MaxClients = 100>
 class TcpGateway {
 public:
-    TcpGateway(SPSCQueue<OrderPayload, 65536>& queue, int port) : ingress_queue(queue), port(port) {
+    TcpGateway(SPSCQueue<OrderPayload, 65536>& in_q, SPSCQueue<ExecutionPayload, 1024>& out_q, int port) : ingress_queue(in_q), egress_queue(out_q), port(port) {
         
         listen_fd = socket(AF_INET, SOCK_STREAM, 0);
         
@@ -45,7 +46,7 @@ public:
         msg_buffer.reserve(32);
 
         while (running) {
-            int nfds = epoll_wait(epoll_fd, events, MaxClients, -1);
+            int nfds = epoll_wait(epoll_fd, events, MaxClients, 0);
             
             for (int n = 0; n < nfds; ++n) {
                 if (events[n].data.fd == listen_fd) {
@@ -57,12 +58,28 @@ public:
                     msg_buffer.clear();
                     if (session.handle_read(msg_buffer)) {
                         for (const auto& raw : msg_buffer) {
-                            ingress_queue.try_push(OrderPayload::from_network(raw));
+                            ingress_queue.try_push(OrderPayload::from_network(raw, fd));
                         }
                     } else {
                         close_connection(fd);
                     }
                 }
+            }
+
+            ExecutionPayload exec;
+            while (egress_queue.try_pop(exec)) {
+                RawNetworkExecution wire_msg = {
+                    exec.order_id,
+                    exec.price,
+                    exec.quantity,
+                    static_cast<uint8_t>(exec.status)
+                };
+
+                send(exec.client_fd, &wire_msg, sizeof(wire_msg), MSG_NOSIGNAL);
+            }
+            
+            if (nfds == 0 && egress_queue.available_to_read() == 0) {
+                asm volatile("yield" ::: "memory"); 
             }
         }
     }
@@ -102,5 +119,6 @@ private:
     bool running = true;
     
     SPSCQueue<OrderPayload, 65536>& ingress_queue;
+    SPSCQueue<ExecutionPayload, 1024>& egress_queue;
     std::unordered_map<int, ClientSession> sessions;
 };

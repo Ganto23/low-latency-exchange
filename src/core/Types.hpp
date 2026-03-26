@@ -7,6 +7,7 @@ struct alignas(32) OrderNode {
     uint32_t quantity = 0;
     uint32_t prev_idx = NULL_NODE;
     uint32_t next_idx = NULL_NODE;
+    int client_fd = -1;
 };
 
 struct alignas(16) PriceLevel {

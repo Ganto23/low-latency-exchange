@@ -3,7 +3,7 @@
 
 enum class ActionType : uint8_t { New, Cancel};
 
-enum class ExecStatus : uint8_t { Filled, Partial, Canceled };
+enum class ExecStatus : uint8_t { Filled, Partial, Accepted, Canceled };
 
 #pragma pack(push, 1)
 struct RawNetworkOrder {
@@ -22,14 +22,16 @@ struct OrderPayload {
     uint32_t quantity;
     bool is_buy;
     ActionType action;
+    int client_fd;
 
-    static inline OrderPayload from_network(const RawNetworkOrder& raw) {
+    static inline OrderPayload from_network(const RawNetworkOrder& raw, int fd) {
         return {
             raw.order_id,
             raw.price,
             raw.quantity,
             raw.side == 1,
-            static_cast<ActionType>(raw.action)
+            static_cast<ActionType>(raw.action),
+            fd
         };
     }
 };
@@ -38,5 +40,6 @@ struct ExecutionPayload {
     uint64_t order_id;
     uint32_t price;
     uint32_t quantity;
+    int client_fd;
     ExecStatus status;
 };

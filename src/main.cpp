@@ -9,8 +9,6 @@
 
 using namespace std::chrono_literals;
 
-SPSCQueue<OrderPayload, 1024> ingress_queue;
-SPSCQueue<ExecutionPayload, 1024> egress_queue;
 
 static int pin_thread_to_core(pthread_t thread, int core_id) {
     cpu_set_t cpuset;
@@ -20,7 +18,10 @@ static int pin_thread_to_core(pthread_t thread, int core_id) {
 }
 
 int main() {
-    std::thread gateway_thread([]() {
+    SPSCQueue<OrderPayload, 1024> ingress_queue;
+    SPSCQueue<ExecutionPayload, 1024> egress_queue;
+
+    std::thread gateway_thread([&ingress_queue, &egress_queue]() {
         uint64_t id = 0;
         while (id < 1000){
             ingress_queue.try_push({id, 5, 6, true, ActionType::New});
@@ -29,8 +30,8 @@ int main() {
         }
     });
 
-    std::thread matcher_thread([]() {
-        Matcher matcher;
+    std::thread matcher_thread([&ingress_queue, &egress_queue]() {
+        Matcher matcher(egress_queue);
         while (true) {
             ingress_queue.wait_for_data();
             size_t available = ingress_queue.available_to_read();
