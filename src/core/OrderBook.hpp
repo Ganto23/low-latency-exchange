@@ -38,6 +38,7 @@ public:
 
     void remove_order(uint64_t order_id, bool is_buy) {
         uint32_t idx_to_remove = id_map[order_id];
+        if (idx_to_remove == NULL_NODE) return;
         uint32_t price = orders[idx_to_remove].price;
         PriceLevel& level = is_buy ? bids[price] : asks[price];
         Bitboard& bits = is_buy ? bids_bits : asks_bits;
