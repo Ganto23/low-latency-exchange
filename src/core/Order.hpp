@@ -18,4 +18,4 @@ struct ExecutionPayload {
     uint32_t price;
     uint32_t quantity;
     ExecStatus status;
-}
+};

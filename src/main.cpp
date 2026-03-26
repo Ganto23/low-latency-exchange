@@ -25,7 +25,7 @@ int main() {
         while (id < 1000){
             ingress_queue.try_push({id, 5, 6, true, ActionType::New});
             id++;
-            std::this_thread::sleep_for(2000ms);
+            std::this_thread::sleep_for(10ms);
         }
     });
 
@@ -37,13 +37,16 @@ int main() {
             for (size_t i = 0; i < available; i++){
                 OrderPayload* ptr = ingress_queue.peek(i);
                 matcher.process_payload(*ptr);
+                std::cout << "Matched Order ID: " << ptr->order_id 
+          << " | Price: " << ptr->price 
+          << " | Batched Size: " << available << "\n";
             }
             ingress_queue.advance(available);
         }
     });
 
-    int rc = pin_thread_to_core(gateway_thread.native_handle(), 1);
-    rc = pin_thread_to_core(matcher_thread.native_handle(), 2);
+    pin_thread_to_core(gateway_thread.native_handle(), 1);
+    pin_thread_to_core(matcher_thread.native_handle(), 2);
 
     gateway_thread.join();
     matcher_thread.join();
