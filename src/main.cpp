@@ -6,6 +6,7 @@
 #include "concurrency/SPSCQueue.hpp"
 #include "core/Matcher.hpp"
 #include "core/Order.hpp"
+#include "gateway/TcpGateway.hpp"
 
 using namespace std::chrono_literals;
 
@@ -18,16 +19,13 @@ static int pin_thread_to_core(pthread_t thread, int core_id) {
 }
 
 int main() {
-    SPSCQueue<OrderPayload, 1024> ingress_queue;
+    SPSCQueue<OrderPayload, 65536> ingress_queue;
     SPSCQueue<ExecutionPayload, 1024> egress_queue;
 
     std::thread gateway_thread([&ingress_queue, &egress_queue]() {
-        uint64_t id = 0;
-        while (id < 1000){
-            ingress_queue.try_push({id, 5, 6, true, ActionType::New});
-            id++;
-            std::this_thread::sleep_for(10ms);
-        }
+        TcpGateway<100> gateway(ingress_queue, egress_queue, 9000);
+        std::cout << "[Main] Gateway starting on port 9000..." << std::endl;
+        gateway.run();
     });
 
     std::thread matcher_thread([&ingress_queue, &egress_queue]() {
