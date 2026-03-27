@@ -26,16 +26,16 @@ make -j4
 cd ..
 
 # 4. Start the Services in the background (&)
-echo "[Orchestrator] Starting C++ Matching Engine (Core 0, 1, 2)..."
-./build/src/matching_engine &
+echo "[Orchestrator] Starting C++ Matching Engine (Core 1, 2, 3)..."
+taskset -c 1,2,3 ./build/src/matching_engine &
 sleep 1 # Give the engine a second to bind its ports
 
-echo "[Orchestrator] Starting Python Multicast Bridge (Core 3)..."
-python3 scripts/bridge.py &
+echo "[Orchestrator] Starting Python Multicast Bridge (Core 0)..."
+taskset -c 0 python3 scripts/bridge.py &
 
 echo "[Orchestrator] Starting Web Dashboard Server..."
 cd web
-python3 -m http.server 3000 > /dev/null 2>&1 &
+taskset -c 0 python3 -m http.server 3000 > /dev/null 2>&1 &
 cd ..
 
 # 5. Get the Pi's IP and print the dashboard link
