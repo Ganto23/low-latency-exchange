@@ -8,7 +8,8 @@
 
 static SPSCQueue<OrderPayload, 65536> ingress_queue;
 static SPSCQueue<ExecutionPayload, 1024> dummy_egress;
-static Matcher matcher(dummy_egress);
+static SPSCQueue<MarketDataEvent, 4096> dummy_md;
+static Matcher matcher(dummy_egress, dummy_md);
 static std::vector<OrderPayload> chaos_script;
 
 inline void PinToIsolatedCore(int core_id) {

@@ -43,3 +43,22 @@ struct ExecutionPayload {
     int client_fd;
     ExecStatus status;
 };
+
+enum class MDEventType : uint8_t { Trade, BBOUpdate };
+struct MarketDataEvent {
+    MDEventType type;
+    uint32_t price;
+    uint32_t quantity;
+    bool side; 
+};
+
+#pragma pack(push, 1)
+struct MDMessage {
+    uint64_t sequence_number; // Increments with every packet
+    uint64_t timestamp_ns;    // When the match happened
+    uint32_t price;
+    uint32_t quantity;
+    uint8_t  type;           // 0: Trade, 1: BBOUpdate
+    uint8_t  side;           // 0: Sell, 1: Buy
+};
+#pragma pack(pop)

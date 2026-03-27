@@ -86,6 +86,12 @@ public:
         return bids_bits.find_highest_bid();
     }
 
+    uint32_t get_volume_at(uint32_t price, bool is_buy) const {
+        if (price == NULL_NODE || price >= MaxPrice) return 0;
+        const auto& level = is_buy ? bids[price] : asks[price];
+        return level.total_volume;
+    }
+
     uint32_t fill_against_price(uint32_t price, uint32_t incoming_qty, bool is_buy_side_of_book, uint64_t incoming_id, int incoming_fd, std::vector<ExecutionPayload>& executions) {
         PriceLevel& level = is_buy_side_of_book ? bids[price] : asks[price];
         Bitboard& bits = is_buy_side_of_book ? bids_bits : asks_bits;

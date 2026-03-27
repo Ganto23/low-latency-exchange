@@ -7,6 +7,7 @@
 #include "core/Matcher.hpp"
 #include "core/Order.hpp"
 #include "gateway/TcpGateway.hpp"
+#include "distribution/MarketDataPublisher.hpp"
 
 using namespace std::chrono_literals;
 
@@ -21,6 +22,7 @@ static int pin_thread_to_core(pthread_t thread, int core_id) {
 int main() {
     SPSCQueue<OrderPayload, 65536> ingress_queue;
     SPSCQueue<ExecutionPayload, 1024> egress_queue;
+    SPSCQueue<MarketDataEvent, 4096> md_queue;
 
     std::thread gateway_thread([&ingress_queue, &egress_queue]() {
         TcpGateway<100> gateway(ingress_queue, egress_queue, 9000);
@@ -28,8 +30,8 @@ int main() {
         gateway.run();
     });
 
-    std::thread matcher_thread([&ingress_queue, &egress_queue]() {
-        Matcher matcher(egress_queue);
+    std::thread matcher_thread([&ingress_queue, &egress_queue, &md_queue]() {
+        Matcher matcher(egress_queue, md_queue);
         while (true) {
             ingress_queue.wait_for_data();
             size_t available = ingress_queue.available_to_read();
@@ -44,8 +46,15 @@ int main() {
         }
     });
 
+    std::thread mkt_data_thread([&md_queue]() {
+        MarketDataPublisher pub(md_queue, "239.0.0.1", 10000);
+        std::cout << "[Main] Market Data Publisher starting on Core 2..." << std::endl;
+        pub.run();
+    });
+
     pin_thread_to_core(gateway_thread.native_handle(), 1);
     pin_thread_to_core(matcher_thread.native_handle(), 2);
+    pin_thread_to_core(mkt_data_thread.native_handle(), 3);
 
     gateway_thread.join();
     matcher_thread.join();

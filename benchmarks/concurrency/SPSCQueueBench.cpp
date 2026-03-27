@@ -21,7 +21,7 @@ inline void PinToIsolatedCore(int thread_idx) {
 static void BM_SPSCQueue_Uncontended(benchmark::State& state) {
     PinToIsolatedCore(state.thread_index());
     SPSCQueue<OrderPayload, 1024> queue;
-    OrderPayload dummy_in{123, 50, 100, true, ActionType::New};
+    OrderPayload dummy_in{123, 50, 100, true, ActionType::New, 0};
     
     for (auto _ : state) {
         queue.try_push(dummy_in);
@@ -39,7 +39,7 @@ static void BM_SPSCQueue_ProducerConsumer(benchmark::State& state) {
     static SPSCQueue<OrderPayload, 65536> queue; 
 
     if (state.thread_index() == 0) { // PRODUCER (Core 1)
-        OrderPayload dummy_in{123, 50, 100, true, ActionType::New};
+        OrderPayload dummy_in{123, 50, 100, true, ActionType::New, 0};
         for (auto _ : state) {
             while (!queue.try_push(dummy_in)) {
                 asm volatile("yield" ::: "memory");
@@ -64,7 +64,7 @@ static void BM_SPSCQueue_BatchedZeroCopy(benchmark::State& state) {
     
     if (state.thread_index() == 0) { // PRODUCER (Core 1)
         std::array<OrderPayload, 8> batch; // Push 8 at a time
-        batch.fill({123, 50, 100, true, ActionType::New});
+        batch.fill({123, 50, 100, true, ActionType::New, 0});
         for (auto _ : state) {
             while (queue.try_push_batch(batch.data(), 8) == 0) {
                 asm volatile("yield" ::: "memory");

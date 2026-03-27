@@ -3,15 +3,22 @@
 #include "Order.hpp"
 #include "../concurrency/SPSCQueue.hpp"
 #include <vector>
+#include <iostream>
 
 class Matcher {
 public:
-    Matcher(SPSCQueue<ExecutionPayload, 1024>& egress) : egress_queue(egress) {
+    Matcher(SPSCQueue<ExecutionPayload, 1024>& egress, SPSCQueue<MarketDataEvent, 4096>& md_egress) : egress_queue(egress), md_queue(md_egress) {
         executions.reserve(32); 
+        md_events.reserve(16);
     }
 
     void process_payload(OrderPayload payload) {
         executions.clear();
+        md_events.clear();
+
+        uint32_t old_bid = book.get_highest_bid();
+        uint32_t old_ask = book.get_lowest_ask();
+
         if (payload.action == ActionType::Cancel) {
             book.remove_order(payload.order_id, payload.is_buy, executions);
         } else {
@@ -21,13 +28,23 @@ public:
                     if (best_ask == NULL_NODE || best_ask > payload.price) {
                         break;
                     }
+                    uint32_t qty_before = payload.quantity;
                     payload.quantity = book.fill_against_price(best_ask, payload.quantity, false, payload.order_id, payload.client_fd, executions);
+                    uint32_t qty_traded = qty_before - payload.quantity;
+                    if (qty_traded > 0) {
+                        md_events.push_back({MDEventType::Trade, best_ask, qty_traded, true});
+                    }
                 } else {
                     uint32_t best_bid = book.get_highest_bid();
                     if (best_bid == NULL_NODE || best_bid < payload.price) {
                         break;
                     }
+                    uint32_t qty_before = payload.quantity;
                     payload.quantity = book.fill_against_price(best_bid, payload.quantity, true, payload.order_id, payload.client_fd, executions);
+                    uint32_t qty_traded = qty_before - payload.quantity;
+                    if (qty_traded > 0) {
+                        md_events.push_back({MDEventType::Trade, best_bid, qty_traded, false});
+                    }
                 }
             }
 
@@ -36,8 +53,28 @@ public:
             }
         }
 
+        uint32_t new_bid = book.get_highest_bid();
+        uint32_t new_ask = book.get_lowest_ask();
+
+        if (new_bid != old_bid || new_ask != old_ask) {
+            if (new_bid != old_bid) {
+                uint32_t vol = (new_bid == NULL_NODE) ? 0 : book.get_volume_at(new_bid, true);
+                md_events.push_back({MDEventType::BBOUpdate, new_bid, vol, true});
+            }
+            if (new_ask != old_ask) {
+                uint32_t vol = (new_ask == NULL_NODE) ? 0 : book.get_volume_at(new_ask, false);
+                md_events.push_back({MDEventType::BBOUpdate, new_ask, vol, false});
+            }
+        }
+
         for (const auto& exec : executions) {
             while (!egress_queue.try_push(exec)) {
+                asm volatile("yield" ::: "memory");
+            }
+        }
+
+        for (const auto& md : md_events) {
+            while (!md_queue.try_push(md)) {
                 asm volatile("yield" ::: "memory");
             }
         }
@@ -46,5 +83,8 @@ public:
 private:
     OrderBook<1000000, 100000> book;
     SPSCQueue<ExecutionPayload, 1024>& egress_queue;
+    SPSCQueue<MarketDataEvent, 4096>& md_queue;
+
     std::vector<ExecutionPayload> executions;
+    std::vector<MarketDataEvent> md_events;
 };
