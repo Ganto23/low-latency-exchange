@@ -41,11 +41,6 @@ public:
         MarketDataEvent event;
         while (g_running) {
             if (md_queue.try_pop(event)) {
-                // THE DEBUG PRINT
-                std::cout << "[Publisher] Popped event type " << (int)event.type 
-                          << " | Px: " << event.price << " | Qty: " << event.quantity 
-                          << " -> Sending to Multicast!" << std::endl;
-
                 auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
                 uint64_t ts = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
 

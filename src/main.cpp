@@ -41,7 +41,6 @@ int main() {
 
     std::thread gateway_thread([&ingress_queue, &egress_queue]() {
         TcpGateway<100> gateway(ingress_queue, egress_queue, 9000);
-        //std::cout << "[Main] Gateway starting on port 9000..." << std::endl;
         gateway.run();
     });
 
@@ -56,7 +55,6 @@ int main() {
             for (size_t i = 0; i < available; i++){
                 OrderPayload* ptr = ingress_queue.peek(i);
                 matcher.process_payload(*ptr);
-                //std::cout << "Matched Order ID: " << ptr->order_id << " | Price: " << ptr->price << " | Batched Size: " << available << "\n";
             }
             ingress_queue.advance(available);
         }
@@ -64,7 +62,6 @@ int main() {
 
     std::thread mkt_data_thread([&md_queue]() {
         MarketDataPublisher pub(md_queue, "239.0.0.1", 10000);
-        //std::cout << "[Main] Market Data Publisher starting on Core 2..." << std::endl;
         pub.run();
     });
 

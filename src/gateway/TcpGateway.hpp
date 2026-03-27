@@ -112,7 +112,6 @@ private:
             epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &ev);
 
             sessions.emplace(client_fd, ClientSession(client_fd));
-            std::cout << "[Gateway] New client connected on FD: " << client_fd << std::endl;
         }
     }
 
@@ -120,7 +119,6 @@ private:
         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
         close(fd);
         sessions.erase(fd);
-        std::cout << "[Gateway] Client disconnected on FD: " << fd << std::endl;
     }
 
     int listen_fd;
