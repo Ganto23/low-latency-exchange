@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFT Exchange Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Raspberry Pi Matching Engine</h1>
+        <span id="status" class="status disconnected">Disconnected</span>
+    </div>
+
+    <div class="dashboard">
+        <div class="panel book-panel">
+            <h2>Order Book (BBO)</h2>
+            <div class="book-container">
+                <div class="book-side asks">
+                    <h3>Best Ask</h3>
+                    <div id="best-ask" class="price-level empty">-</div>
+                </div>
+                <div class="book-side bids">
+                    <h3>Best Bid</h3>
+                    <div id="best-bid" class="price-level empty">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel tape-panel">
+            <h2>Recent Trades</h2>
+            <div class="tape-header">
+                <span>Time</span>
+                <span>Price</span>
+                <span>Qty</span>
+            </div>
+            <ul id="trade-tape">
+                </ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
