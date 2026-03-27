@@ -21,7 +21,7 @@ echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_gover
 # 3. Compile the latest C++ code
 echo "[Orchestrator] Building C++ Matching Engine..."
 mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_TELEMETRY=ON ..
 make -j4
 cd ..
 

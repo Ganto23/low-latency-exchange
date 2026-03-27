@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
 project(low-latency-exchange CXX)
+
+option(ENABLE_TELEMETRY "Enable end-to-end latency tracking" OFF)
+if(ENABLE_TELEMETRY)
+    add_compile_definitions(ENABLE_TELEMETRY)
+    message(STATUS "Telemtry Enabled: End-to-End latency tracking is ON")
+endif()
+
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 # Enforce C++20 for the bitboard hardware instructions
 set(CMAKE_CXX_STANDARD 20)

@@ -7,6 +7,13 @@
 #include <chrono>
 #include <iostream>
 
+extern std::atomic<bool> g_running;
+
+#ifdef ENABLE_TELEMETRY
+#include "../../benchmarks/system/LatencyRecorder.hpp"
+LatencyRecorder<100000> g_e2e_recorder; 
+#endif
+
 class MarketDataPublisher {
 public:
     MarketDataPublisher(SPSCQueue<MarketDataEvent, 4096>& queue, 
@@ -32,7 +39,7 @@ public:
 
     void run() {
         MarketDataEvent event;
-        while (running) {
+        while (g_running) {
             if (md_queue.try_pop(event)) {
                 // THE DEBUG PRINT
                 std::cout << "[Publisher] Popped event type " << (int)event.type 
@@ -52,10 +59,21 @@ public:
                 };
 
                 sendto(fd, &msg, sizeof(msg), 0, (struct sockaddr*)&addr, sizeof(addr));
+
+            #ifdef ENABLE_TELEMETRY
+                uint64_t egress_ts = current_nanos();
+                uint64_t wire_to_wire = egress_ts - event.ingress_ts;
+                g_e2e_recorder.record(wire_to_wire);
+            #endif
             } else {
                 asm volatile("yield" ::: "memory");
             }
         }
+
+    #ifdef ENABLE_TELEMETRY
+        g_e2e_recorder.report("Wire-to-Wire (End-to-End) Latency");
+        g_e2e_recorder.save_to_csv("wire_to_wire_data.csv");
+    #endif
     }
 
 private:
@@ -63,5 +81,4 @@ private:
     struct sockaddr_in addr;
     SPSCQueue<MarketDataEvent, 4096>& md_queue;
     uint64_t sequence;
-    bool running = true;
 };

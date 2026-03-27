@@ -33,6 +33,7 @@ public:
                 file << ns << "," << buckets[ns] << "\n";
             }
         }
+        file.flush();
         file.close();
         std::cout << "[Telemetry] Raw latency data saved to " << filename << std::endl;
     }

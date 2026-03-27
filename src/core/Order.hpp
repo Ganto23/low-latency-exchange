@@ -1,5 +1,12 @@
 #pragma once
 #include <cstdint>
+#include <chrono>
+
+inline uint64_t current_nanos() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::high_resolution_clock::now().time_since_epoch()
+    ).count();
+}
 
 enum class ActionType : uint8_t { New, Cancel};
 
@@ -23,6 +30,10 @@ struct OrderPayload {
     bool is_buy;
     ActionType action;
     int client_fd;
+
+#ifdef ENABLE_TELEMETRY
+    uint64_t ingress_ts; // Hardware timestamp from Gateway
+#endif
 
     static inline OrderPayload from_network(const RawNetworkOrder& raw, int fd) {
         return {
@@ -50,6 +61,10 @@ struct MarketDataEvent {
     uint32_t price;
     uint32_t quantity;
     bool side; 
+
+#ifdef ENABLE_TELEMETRY
+    uint64_t ingress_ts; // Passed down from the Matcher
+#endif
 };
 
 #pragma pack(push, 1)

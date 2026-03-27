@@ -9,6 +9,18 @@
 #include "gateway/TcpGateway.hpp"
 #include "distribution/MarketDataPublisher.hpp"
 
+#include <csignal>
+#include <atomic>
+
+// Global flag to control all threads
+std::atomic<bool> g_running{true};
+
+// The function that the OS will call when it tries to kill the engine
+void signal_handler(int signum) {
+    std::cout << "\n[Engine] Caught kill signal (" << signum << "). Shutting down gracefully..." << std::endl;
+    g_running = false;
+}
+
 using namespace std::chrono_literals;
 
 
@@ -20,27 +32,31 @@ static int pin_thread_to_core(pthread_t thread, int core_id) {
 }
 
 int main() {
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+
     SPSCQueue<OrderPayload, 65536> ingress_queue;
     SPSCQueue<ExecutionPayload, 1024> egress_queue;
     SPSCQueue<MarketDataEvent, 4096> md_queue;
 
     std::thread gateway_thread([&ingress_queue, &egress_queue]() {
         TcpGateway<100> gateway(ingress_queue, egress_queue, 9000);
-        std::cout << "[Main] Gateway starting on port 9000..." << std::endl;
+        //std::cout << "[Main] Gateway starting on port 9000..." << std::endl;
         gateway.run();
     });
 
     std::thread matcher_thread([&ingress_queue, &egress_queue, &md_queue]() {
         Matcher matcher(egress_queue, md_queue);
-        while (true) {
-            ingress_queue.wait_for_data();
+        while (g_running) {
             size_t available = ingress_queue.available_to_read();
+            if (available == 0) {
+                asm volatile("yield" ::: "memory"); 
+                continue; 
+            }
             for (size_t i = 0; i < available; i++){
                 OrderPayload* ptr = ingress_queue.peek(i);
                 matcher.process_payload(*ptr);
-                std::cout << "Matched Order ID: " << ptr->order_id 
-          << " | Price: " << ptr->price 
-          << " | Batched Size: " << available << "\n";
+                //std::cout << "Matched Order ID: " << ptr->order_id << " | Price: " << ptr->price << " | Batched Size: " << available << "\n";
             }
             ingress_queue.advance(available);
         }
@@ -48,7 +64,7 @@ int main() {
 
     std::thread mkt_data_thread([&md_queue]() {
         MarketDataPublisher pub(md_queue, "239.0.0.1", 10000);
-        std::cout << "[Main] Market Data Publisher starting on Core 2..." << std::endl;
+        //std::cout << "[Main] Market Data Publisher starting on Core 2..." << std::endl;
         pub.run();
     });
 
@@ -58,6 +74,7 @@ int main() {
 
     gateway_thread.join();
     matcher_thread.join();
+    mkt_data_thread.join();
 }
 
 

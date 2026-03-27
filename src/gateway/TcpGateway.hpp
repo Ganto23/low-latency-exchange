@@ -14,10 +14,12 @@
 #include "../core/Order.hpp"
 #include "NetworkProtocol.hpp"
 
+extern std::atomic<bool> g_running;
+
 template <size_t MaxClients = 100>
 class TcpGateway {
 public:
-    TcpGateway(SPSCQueue<OrderPayload, 65536>& in_q, SPSCQueue<ExecutionPayload, 1024>& out_q, int port) : ingress_queue(in_q), egress_queue(out_q), port(port) {
+    TcpGateway(SPSCQueue<OrderPayload, 65536>& in_q, SPSCQueue<ExecutionPayload, 1024>& out_q, int port) :  port(port), ingress_queue(in_q), egress_queue(out_q) {
         
         listen_fd = socket(AF_INET, SOCK_STREAM, 0);
         
@@ -46,7 +48,7 @@ public:
         std::vector<RawNetworkOrder> msg_buffer;
         msg_buffer.reserve(32);
 
-        while (running) {
+        while (g_running) {
             int nfds = epoll_wait(epoll_fd, events, MaxClients, 0);
             
             for (int n = 0; n < nfds; ++n) {
@@ -58,8 +60,15 @@ public:
                     
                     msg_buffer.clear();
                     if (session.handle_read(msg_buffer)) {
+                    #ifdef ENABLE_TELEMETRY
+                        uint64_t batch_ingress_ts = current_nanos();
+                    #endif
                         for (const auto& raw : msg_buffer) {
-                            ingress_queue.try_push(OrderPayload::from_network(raw, fd));
+                            OrderPayload payload = OrderPayload::from_network(raw, fd);
+                        #ifdef ENABLE_TELEMETRY
+                            payload.ingress_ts = batch_ingress_ts;
+                        #endif
+                            ingress_queue.try_push(payload);
                         }
                     } else {
                         close_connection(fd);
@@ -117,7 +126,6 @@ private:
     int listen_fd;
     int epoll_fd;
     int port;
-    bool running = true;
     
     SPSCQueue<OrderPayload, 65536>& ingress_queue;
     SPSCQueue<ExecutionPayload, 1024>& egress_queue;
