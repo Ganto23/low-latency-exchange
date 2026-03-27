@@ -7,7 +7,8 @@
 #include "core/Order.hpp"
 
 static SPSCQueue<OrderPayload, 65536> ingress_queue;
-static Matcher matcher;
+static SPSCQueue<ExecutionPayload, 1024> dummy_egress;
+static Matcher matcher(dummy_egress);
 static std::vector<OrderPayload> chaos_script;
 
 inline void PinToIsolatedCore(int core_id) {
@@ -49,7 +50,8 @@ static void GenerateChaos() {
             price_dist(gen),
             qty_dist(gen),
             side,
-            is_cancel ? ActionType::Cancel : ActionType::New
+            is_cancel ? ActionType::Cancel : ActionType::New,
+            0
         };
     }
 }

@@ -12,6 +12,7 @@
 #include "ClientSession.hpp"
 #include "../concurrency/SPSCQueue.hpp"
 #include "../core/Order.hpp"
+#include "NetworkProtocol.hpp"
 
 template <size_t MaxClients = 100>
 class TcpGateway {

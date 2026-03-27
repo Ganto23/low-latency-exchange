@@ -6,7 +6,7 @@
 
 class Matcher {
 public:
-    Matcher(SPSCQueue<ExecutionPayload, 65536>& egress) : egress_queue(egress) {
+    Matcher(SPSCQueue<ExecutionPayload, 1024>& egress) : egress_queue(egress) {
         executions.reserve(32); 
     }
 
@@ -45,6 +45,6 @@ public:
 
 private:
     OrderBook<1000000, 100000> book;
-    SPSCQueue<ExecutionPayload, 65536>& egress_queue;
+    SPSCQueue<ExecutionPayload, 1024>& egress_queue;
     std::vector<ExecutionPayload> executions;
 };

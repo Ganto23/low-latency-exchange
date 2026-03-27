@@ -7,7 +7,8 @@
 
 // Global instances
 static SPSCQueue<OrderPayload, 65536> ingress_queue;
-static Matcher matcher;
+static SPSCQueue<ExecutionPayload, 1024> dummy_egress;
+static Matcher matcher(dummy_egress);
 
 inline void PinToIsolatedCore(int core_id) {
     cpu_set_t cpuset;
@@ -20,7 +21,7 @@ static void BM_InternalPipeline_Latency(benchmark::State& state) {
     if (state.thread_index() == 0) {
         // --- PRODUCER (Gateway) ---
         PinToIsolatedCore(1);
-        OrderPayload order{1, 100, 10, true, ActionType::New};
+        OrderPayload order{1, 100, 10, true, ActionType::New, 0};
         uint64_t iter_count = 0;
 
         for (auto _ : state) {
