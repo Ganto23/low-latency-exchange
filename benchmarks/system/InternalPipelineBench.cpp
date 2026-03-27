@@ -4,8 +4,13 @@
 #include "concurrency/SPSCQueue.hpp"
 #include "core/Matcher.hpp"
 #include "core/Order.hpp"
+#include "LatencyRecorder.hpp"
+#include <chrono>
+#include <thread>
 
 // Global instances
+static LatencyRecorder<5000> g_recorder;
+
 static SPSCQueue<OrderPayload, 65536> ingress_queue;
 static SPSCQueue<ExecutionPayload, 1024> dummy_egress;
 static SPSCQueue<MarketDataEvent, 4096> dummy_md;
@@ -45,10 +50,17 @@ static void BM_InternalPipeline_Latency(benchmark::State& state) {
             }
             
             OrderPayload* p = ingress_queue.peek(0);
+
+            auto start = std::chrono::high_resolution_clock::now();
             
             // CRITICAL: If your Matcher doesn't have a way to clear the book,
             // the FreeList will eventually empty. 
             matcher.process_payload(*p); 
+
+            auto end = std::chrono::high_resolution_clock::now();
+
+            uint64_t diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            g_recorder.record(diff);
 
             ExecutionPayload temp_exec;
             while (dummy_egress.try_pop(temp_exec)) {
@@ -61,6 +73,14 @@ static void BM_InternalPipeline_Latency(benchmark::State& state) {
             benchmark::DoNotOptimize(p);
             ingress_queue.advance(1);
         }
+    }
+
+    if (state.thread_index() == 0) {
+        // We give the consumer a tiny bit of time to finish its last few iterations
+        // before the main thread prints the report
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        g_recorder.report("Matcher Hot Path (Tick-to-Trade)");
+        g_recorder.save_to_csv("latency_data.csv");
     }
 }
 
