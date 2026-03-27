@@ -85,6 +85,14 @@ static void BM_InternalPipeline_Chaos(benchmark::State& state) {
             
             // This is where your engine goes to war
             matcher.process_payload(*p); 
+
+            ExecutionPayload temp_exec;
+            while (dummy_egress.try_pop(temp_exec)) {
+            }
+
+            MarketDataEvent temp_md;
+            while (dummy_md.try_pop(temp_md)) {
+            }
             
             benchmark::DoNotOptimize(p);
             ingress_queue.advance(1);

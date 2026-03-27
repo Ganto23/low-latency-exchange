@@ -49,6 +49,14 @@ static void BM_InternalPipeline_Latency(benchmark::State& state) {
             // CRITICAL: If your Matcher doesn't have a way to clear the book,
             // the FreeList will eventually empty. 
             matcher.process_payload(*p); 
+
+            ExecutionPayload temp_exec;
+            while (dummy_egress.try_pop(temp_exec)) {
+            }
+
+            MarketDataEvent temp_md;
+            while (dummy_md.try_pop(temp_md)) {
+            }
             
             benchmark::DoNotOptimize(p);
             ingress_queue.advance(1);
